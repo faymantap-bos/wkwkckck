@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AM Generator</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #f7e7c6;
+      color: #111111;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background-color: #f7e7c6;
+    }
+
+    .card {
+      width: min(100%, 520px);
+      padding: 32px;
+      border: 4px solid #111111;
+      border-radius: 8px;
+      background: #fffdf5;
+      box-shadow: 10px 10px 0 #111111;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(30px, 8vw, 48px);
+      line-height: .95;
+      letter-spacing: -0.07em;
+      text-transform: uppercase;
+    }
+
+    h1::after {
+      content: "";
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      margin-left: 8px;
+      background: #ff4f9a;
+      border: 3px solid #111111;
+      vertical-align: top;
+    }
+
+    .eyebrow {
+      display: inline-block;
+      margin: 0 0 18px;
+      padding: 5px 8px;
+      border: 3px solid #111111;
+      background: #b8f04a;
+      box-shadow: 4px 4px 0 #111111;
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: .12em;
+    }
+
+    .subtitle { margin: 0 0 24px; font-size: 16px; font-weight: 700; }
+
+    button, a.button {
+      width: 100%;
+      border: 4px solid #111111;
+      border-radius: 6px;
+      padding: 14px 16px;
+      font: inherit;
+      font-weight: 900;
+      letter-spacing: .02em;
+      text-transform: uppercase;
+      text-align: center;
+      cursor: pointer;
+      text-decoration: none;
+      box-shadow: 6px 6px 0 #111111;
+      transition: transform .1s ease, box-shadow .1s ease, background .1s ease;
+    }
+
+    button { background: #ffcc33; color: #111111; }
+    button:hover { background: #ff4f9a; }
+    button:active:not(:disabled) { transform: translate(4px, 4px); box-shadow: 2px 2px 0 #111111; }
+    button:focus-visible, a:focus-visible { outline: 4px solid #2764ff; outline-offset: 4px; }
+    button:disabled { opacity: .55; cursor: wait; }
+
+    .status { min-height: 24px; margin: 20px 0 0; font-weight: 800; }
+    .status.error { color: #c51f36; }
+
+    .result {
+      display: none;
+      margin-top: 20px;
+      overflow: hidden;
+      border: 4px solid #111111;
+      border-radius: 6px;
+      box-shadow: 6px 6px 0 #111111;
+    }
+
+    .row { padding: 14px 15px; border-bottom: 4px solid #111111; }
+    .row:nth-child(odd) { background: #9ee8ff; }
+    .row:nth-child(even) { background: #ffffff; }
+    .row:last-child { border-bottom: 0; }
+    .label { display: block; margin-bottom: 5px; font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: .12em; }
+    .value { word-break: break-word; font-weight: 800; }
+    a { color: #111111; text-decoration-thickness: 3px; text-underline-offset: 3px; }
+
+    @media (max-width: 560px) {
+      body { padding: 16px; }
+      .card { padding: 24px 20px; box-shadow: 7px 7px 0 #111111; }
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <p class="eyebrow">PERSONAL TOOLKIT / ONE ACCOUNT</p>
+    <h1>AM Generator</h1>
+    <p class="subtitle">Buat satu akun temporary dan tampilkan hasilnya.</p>
+
+    <button id="generateButton" type="button">Generate Account</button>
+    <p id="status" class="status" aria-live="polite"></p>
+
+    <section id="result" class="result" aria-live="polite">
+      <div class="row"><span class="label">Email</span><span id="email" class="value"></span></div>
+      <div class="row"><span class="label">Inbox</span><a id="inboxLink" class="value" target="_blank" rel="noopener noreferrer">Buka inbox</a></div>
+      <div class="row"><span class="label">Membership</span><span id="membership" class="value"></span></div>
+      <div class="row"><span class="label">Plan</span><span id="plan" class="value"></span></div>
+      <div class="row"><span class="label">Subscription</span><span id="subscription" class="value"></span></div>
+      <div class="row"><span class="label">Valid until</span><span id="validUntil" class="value"></span></div>
+    </section>
+  </main>
+
+  <script>
+    const button = document.getElementById("generateButton");
+    const status = document.getElementById("status");
+    const result = document.getElementById("result");
+
+    function valueOrDash(value) {
+      return value === undefined || value === null || value === "" ? "-" : String(value);
+    }
+
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      result.style.display = "none";
+      status.className = "status";
+      status.textContent = "Sedang membuat akun dan menunggu email verifikasi...";
+
+      try {
+        const response = await fetch("/api/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: "{}"
+        });
+
+        const data = await response.json();
+        if (!response.ok || !data.status) {
+          throw new Error(data.error || "Gagal membuat akun");
+        }
+
+        document.getElementById("email").textContent = valueOrDash(data.email);
+        const inboxLink = document.getElementById("inboxLink");
+        inboxLink.href = data.inbox_link || "#";
+        inboxLink.textContent = data.inbox_link || "-";
+        document.getElementById("membership").textContent = valueOrDash(data.membership);
+        document.getElementById("plan").textContent = valueOrDash(data.plan);
+        document.getElementById("subscription").textContent = valueOrDash(data.subscription);
+        document.getElementById("validUntil").textContent = valueOrDash(data.valid_until);
+
+        result.style.display = "block";
+        status.textContent = "Akun berhasil dibuat.";
+      } catch (error) {
+        status.className = "status error";
+        status.textContent = error.message || "Terjadi kesalahan.";
+      } finally {
+        button.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
