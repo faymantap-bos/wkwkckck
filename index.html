@@ -17,8 +17,10 @@
     body {
       margin: 0;
       min-height: 100vh;
-      display: grid;
-      place-items: center;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
       padding: 24px;
       background-color: #f7e7c6;
     }
@@ -104,8 +106,36 @@
     .row:nth-child(even) { background: #ffffff; }
     .row:last-child { border-bottom: 0; }
     .label { display: block; margin-bottom: 5px; font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: .12em; }
-    .value { word-break: break-word; font-weight: 800; }
+    .value-line { display: flex; align-items: flex-start; gap: 10px; }
+    .value { min-width: 0; flex: 1; word-break: break-word; font-weight: 800; }
     a { color: #111111; text-decoration-thickness: 3px; text-underline-offset: 3px; }
+
+    .credit {
+      width: min(100%, 520px);
+      margin: 20px 0 0;
+      text-align: center;
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .copy-button {
+      flex: 0 0 auto;
+      width: auto;
+      padding: 5px 8px;
+      border: 3px solid #111111;
+      border-radius: 4px;
+      background: #ffcc33;
+      color: #111111;
+      box-shadow: 3px 3px 0 #111111;
+      font-size: 11px;
+      font-weight: 900;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+
+    .copy-button:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 #111111; }
 
     @media (max-width: 560px) {
       body { padding: 16px; }
@@ -123,19 +153,72 @@
     <p id="status" class="status" aria-live="polite"></p>
 
     <section id="result" class="result" aria-live="polite">
-      <div class="row"><span class="label">Email</span><span id="email" class="value"></span></div>
-      <div class="row"><span class="label">Inbox</span><a id="inboxLink" class="value" target="_blank" rel="noopener noreferrer">Buka inbox</a></div>
+      <div class="row">
+        <span class="label">Email</span>
+        <div class="value-line">
+          <span id="email" class="value"></span>
+          <button class="copy-button" type="button" data-copy-target="email">Copy</button>
+        </div>
+      </div>
+      <div class="row">
+        <span class="label">Inbox</span>
+        <div class="value-line">
+          <a id="inboxLink" class="value" target="_blank" rel="noopener noreferrer">Buka inbox</a>
+          <button class="copy-button" type="button" data-copy-target="inboxLink">Copy</button>
+        </div>
+      </div>
       <div class="row"><span class="label">Membership</span><span id="membership" class="value"></span></div>
       <div class="row"><span class="label">Plan</span><span id="plan" class="value"></span></div>
       <div class="row"><span class="label">Subscription</span><span id="subscription" class="value"></span></div>
       <div class="row"><span class="label">Valid until</span><span id="validUntil" class="value"></span></div>
     </section>
+
   </main>
+
+  <footer class="credit">© 2026 NOXXY TECH. All Rights Reserved.</footer>
 
   <script>
     const button = document.getElementById("generateButton");
     const status = document.getElementById("status");
     const result = document.getElementById("result");
+
+    async function copyValue(targetId, copyButton) {
+      const target = document.getElementById(targetId);
+      const value = targetId === "inboxLink" ? target.href : target.textContent.trim();
+
+      if (!value || value === "-" || value === window.location.href + "#") {
+        return;
+      }
+
+      try {
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(value);
+        } else {
+          const textarea = document.createElement("textarea");
+          textarea.value = value;
+          textarea.style.position = "fixed";
+          textarea.style.opacity = "0";
+          document.body.appendChild(textarea);
+          textarea.select();
+          const copied = document.execCommand("copy");
+          textarea.remove();
+          if (!copied) throw new Error("copy failed");
+        }
+
+        const originalText = copyButton.textContent;
+        copyButton.textContent = "Copied";
+        setTimeout(() => { copyButton.textContent = originalText; }, 1200);
+      } catch {
+        status.className = "status error";
+        status.textContent = "Gagal menyalin. Silakan salin secara manual.";
+      }
+    }
+
+    document.querySelectorAll(".copy-button").forEach(copyButton => {
+      copyButton.addEventListener("click", () => {
+        copyValue(copyButton.dataset.copyTarget, copyButton);
+      });
+    });
 
     function valueOrDash(value) {
       return value === undefined || value === null || value === "" ? "-" : String(value);
